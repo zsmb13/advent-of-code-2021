@@ -1,5 +1,6 @@
 fun main() {
 
+    // Brute force
     fun part1(input: List<String>): Int {
         val fish = input.first().split(",").map { it.toInt() }.toMutableList()
         (1..80).forEach {
@@ -13,8 +14,8 @@ fun main() {
         return fish.count()
     }
 
+    // Recursive, brute force, with a LUT to make it performant
     val cache = mutableMapOf<Pair<Int, Int>, Long>()
-
     fun calculatePopulation(fish: Int, remainingDays: Int): Long {
         val cached = cache[fish to remainingDays]
         if (cached != null) {
@@ -38,6 +39,7 @@ fun main() {
         return fish.sumOf { calculatePopulation(it, 256) }
     }
 
+    // Bucketing all fish of the same timer value
     fun part2Variant(input: List<String>): Long {
         val buckets = LongArray(size = 9)
         input.first().split(",")
