@@ -27,16 +27,11 @@ fun main() {
         }
     }
 
-    fun getLines(
-        input: List<String>,
-        predicate: (Line) -> Boolean = { true },
-    ): List<Line> {
-        return input
-            .map { line ->
-                val (x1, y1, x2, y2) = line.split(" -> ").flatMap { it.split(",") }.map(String::toInt)
-                Line(Point(x1, y1), Point(x2, y2))
-            }
-            .filter(predicate)
+    fun getLines(input: List<String>): List<Line> {
+        return input.map { line ->
+            val (x1, y1, x2, y2) = line.split(" -> ").flatMap { it.split(",") }.map(String::toInt)
+            Line(Point(x1, y1), Point(x2, y2))
+        }
     }
 
     fun countOverlaps(lines: List<Line>): Int {
@@ -49,7 +44,7 @@ fun main() {
     }
 
     fun part1(input: List<String>): Int {
-        val lines = getLines(input, predicate = { (p1, p2) -> p1.x == p2.x || p1.y == p2.y })
+        val lines = getLines(input).filter { (p1, p2) -> p1.x == p2.x || p1.y == p2.y }
         return countOverlaps(lines)
     }
 
