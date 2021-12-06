@@ -38,11 +38,31 @@ fun main() {
         return fish.sumOf { calculatePopulation(it, 256) }
     }
 
+    fun part2Variant(input: List<String>): Long {
+        val buckets = LongArray(size = 9)
+        input.first().split(",")
+            .map(String::toInt)
+            .forEach { buckets[it]++ }
+
+        repeat(256) {
+            val spawnerCount = buckets[0]
+            for (i in 1..8) {
+                buckets[i - 1] = buckets[i]
+            }
+            buckets[8] = spawnerCount
+            buckets[6] += spawnerCount
+        }
+
+        return buckets.sumOf { it }
+    }
+
     val testInput = readInput("Day06_Test")
     check(part1(testInput) == 5934)
     check(part2(testInput) == 26984457539L)
+    check(part2Variant(testInput) == 26984457539L)
 
     val input = readInput("Day06")
     println(part1(input))
     println(part2(input))
+    println(part2Variant(input))
 }
