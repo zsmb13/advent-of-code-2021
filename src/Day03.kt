@@ -24,29 +24,23 @@ fun main() {
         return gamma * epsilon
     }
 
-    fun part2(input: List<String>): Int {
-        val oxCandidates = input.toMutableList()
-        val co2Candidates = input.toMutableList()
-
+    fun runRetainCycles(oxCandidates: MutableList<String>, bitToRetain: (oneRatio: Double) -> Char) {
         var index = 0
         do {
             val mostCommonBit = oxCandidates
                 .count { line -> line[index] == '1' }
-                .let { count ->
-                    if (count * 2 >= oxCandidates.size) '1' else '0'
-                }
+                .let { count -> bitToRetain(count / oxCandidates.size.toDouble()) }
             oxCandidates.retainAll { it[index] == mostCommonBit }
             index++
         } while (oxCandidates.size > 1)
+    }
 
-        index = 0
-        do {
-            val leastCommonBit = co2Candidates
-                .count { line -> line[index] == '1' }
-                .let { count -> if (count * 2 >= co2Candidates.size) '0' else '1' }
-            co2Candidates.retainAll { it[index] == leastCommonBit }
-            index++
-        } while (co2Candidates.size > 1)
+    fun part2(input: List<String>): Int {
+        val oxCandidates = input.toMutableList()
+        val co2Candidates = input.toMutableList()
+
+        runRetainCycles(oxCandidates) { oneRatio -> if (oneRatio >= 0.5) '1' else '0' }
+        runRetainCycles(co2Candidates) { oneRatio -> if (oneRatio >= 0.5) '0' else '1' }
 
         return oxCandidates.first().toInt(radix = 2) * co2Candidates.first().toInt(radix = 2)
     }
