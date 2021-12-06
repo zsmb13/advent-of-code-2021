@@ -3,7 +3,7 @@ fun main() {
     // Brute force
     fun part1(input: List<String>): Int {
         val fish = input.first().split(",").map { it.toInt() }.toMutableList()
-        (1..80).forEach {
+        repeat(80) {
             fish.indices.forEach { i ->
                 if (--fish[i] == -1) {
                     fish[i] = 6
