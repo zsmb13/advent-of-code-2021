@@ -4,10 +4,11 @@ fun main() {
         val bits = IntArray(size = numberOfBits)
         val mask = IntArray(size = numberOfBits) { 1 }
 
-        fun IntArray.toInt(): Int = this
-            .map { bit -> if (bit < 0) 0 else 1 }
-            .joinToString(separator = "")
-            .toInt(radix = 2)
+        fun IntArray.toInt(): Int = buildString {
+            this@toInt.forEach { bit ->
+                append(if (bit >= 0) '1' else '0')
+            }
+        }.toInt(radix = 2)
 
         input.forEach { number ->
             number.forEachIndexed { index, bit ->
