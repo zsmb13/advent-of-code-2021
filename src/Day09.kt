@@ -33,6 +33,7 @@ fun main() {
         val yMax = input.lastIndex
 
         val map = IntArray((xMax + 1) * (yMax + 1))
+
         fun index(x: Int, y: Int) = (y * (xMax + 1) + x)
         operator fun IntArray.get(x: Int, y: Int) = get(index(x, y))
         operator fun IntArray.set(x: Int, y: Int, value: Int) = set(index(x, y), value)
@@ -43,14 +44,9 @@ fun main() {
             }
         }
 
-        fun neighbouringValues(x: Int, y: Int) = sequence {
-            if (x > 0) yield(map[x - 1, y])
-            if (x < xMax) yield(map[x + 1, y])
-            if (y > 0) yield(map[x, y - 1])
-            if (y < yMax) yield(map[x, y + 1])
-        }
-
         data class Point(val x: Int, val y: Int)
+
+        fun height(p: Point) = map[p.x, p.y]
 
         fun neighbouringPoints(x: Int, y: Int) = sequence {
             if (x > 0) yield(Point(x - 1, y))
@@ -59,35 +55,30 @@ fun main() {
             if (y < yMax) yield(Point(x, y + 1))
         }
 
-        fun height(p: Point) = map[p.x, p.y]
-
-        val basins = mutableSetOf<MutableSet<Point>>()
-
-        for (x in 0..xMax) {
-            for (y in 0..yMax) {
-                val current = map[x, y]
-                if (neighbouringValues(x, y).all { it > current }) {
-                    basins += mutableSetOf(Point(x, y))
+        fun lowPoints() = buildList {
+            for (x in 0..xMax) {
+                for (y in 0..yMax) {
+                    val current = map[x, y]
+                    if (neighbouringPoints(x, y).all { height(it) > current }) {
+                        add(Point(x, y))
+                    }
                 }
             }
         }
 
-        fun expand(basin: MutableSet<Point>, with: Point) {
-            if (with in basin) return
+        fun MutableSet<Point>.expandWith(point: Point) {
+            if (point in this) return
 
-            val current = height(with)
+            val current = height(point)
             if (current == 9) return
 
-            basin += with
-            neighbouringPoints(with.x, with.y).forEach {
-                expand(basin, it)
-            }
+            this += point
+            neighbouringPoints(point.x, point.y).forEach(this::expandWith)
         }
 
-        basins.forEach {
-            val start = it.first()
-            it.remove(start)
-            expand(it, start)
+        val basins = mutableSetOf<MutableSet<Point>>()
+        lowPoints().forEach { point ->
+            basins += mutableSetOf<Point>().apply { expandWith(point) }
         }
 
         return basins.sortedByDescending(Set<Point>::size).take(3).fold(1) { acc, basin ->
