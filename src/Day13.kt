@@ -49,13 +49,12 @@ fun main() {
     }
 
     fun part2(input: List<String>) {
-        var dots = parseDots(input)
+        val dots = parseDots(input)
         val folds = parseFolds(input)
 
-        folds.forEach { fold ->
-            dots = dots.map(fold::apply).toSet()
-        }
-        print(dots)
+        folds.fold(dots) { dots, fold ->
+            dots.mapTo(mutableSetOf(), fold::apply)
+        }.let(::print)
     }
 
     val testInput1 = readInput("Day13_Test")
