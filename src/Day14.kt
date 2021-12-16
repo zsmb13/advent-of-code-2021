@@ -5,7 +5,7 @@ fun main() {
             buildMap {
                 rules.forEach { rule ->
                     val (from, to) = rule.split(" -> ")
-                    put(from, from[0] + to + from[1])
+                    put(from, to)
                 }
             }
         }
@@ -13,7 +13,8 @@ fun main() {
         repeat(10) {
             polymer = buildString {
                 polymer.windowed(2).forEach { pair ->
-                    append(rules.getOrDefault(pair, pair).dropLast(1))
+                    append(pair.first())
+                    append(rules[pair])
                 }
                 append(polymer.last())
             }
@@ -42,13 +43,10 @@ fun main() {
 
         repeat(40) {
             pairCounts.toMap().forEach { (pair, count) ->
-                val res = rules[pair]
-                if (res != null) {
-                    val (a, b) = res
-                    pairCounts[pair] = pairCounts.getValue(pair) - count
-                    pairCounts[a] = pairCounts.getOrDefault(a, 0) + count
-                    pairCounts[b] = pairCounts.getOrDefault(b, 0) + count
-                }
+                val (a, b) = rules.getValue(pair)
+                pairCounts[pair] = pairCounts.getValue(pair) - count
+                pairCounts[a] = pairCounts.getOrDefault(a, 0) + count
+                pairCounts[b] = pairCounts.getOrDefault(b, 0) + count
             }
         }
 
@@ -56,7 +54,6 @@ fun main() {
         pairCounts.forEach { (pair, count) ->
             elementCounts[pair[0]] = elementCounts.getOrDefault(pair[0], 0) + count
             elementCounts[pair[1]] = elementCounts.getOrDefault(pair[1], 0) + count
-
         }
 
         return (elementCounts.maxOf { it.value } + 1) / 2 -
