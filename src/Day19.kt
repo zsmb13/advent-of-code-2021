@@ -1,17 +1,18 @@
 import kotlin.math.abs
 
 data class Point(var a: Int, var b: Int, var c: Int) {
-    operator fun get(index: Int): Int {
-        return when (index) {
-            0 -> a
-            1 -> b
-            2 -> c
-            else -> error("invalid index")
-        }
+    operator fun get(index: Int) = when (index) {
+        0 -> a; 1 -> b; 2 -> c; else -> error("Invalid index")
     }
 }
 
-data class Scanner(
+fun Point.offset(other: Point) {
+    a += other.a
+    b += other.b
+    c += other.c
+}
+
+class Scanner(
     val position: Point = Point(0, 0, 0),
     val beacons: List<Point>,
 )
@@ -21,64 +22,44 @@ fun main() {
         return buildList {
             var beacons = mutableListOf<Point>()
             input.forEach { line ->
-                if (line.startsWith("--- scanner")) {
-                    // Do nothing
-                } else if (line.isBlank()) {
-                    add(Scanner(beacons = beacons))
-                    beacons = mutableListOf()
-                } else {
-                    val (a, b, c) = line.split(",").map(String::toInt)
-                    beacons += Point(a, b, c)
+                when {
+                    line.startsWith("--- scanner") -> beacons = mutableListOf()
+                    line.isBlank() -> add(Scanner(beacons = beacons))
+                    else -> {
+                        val (a, b, c) = line.split(",").map(String::toInt)
+                        beacons += Point(a, b, c)
+                    }
                 }
             }
             add(Scanner(beacons = beacons))
         }
     }
 
-    fun computeSolution(scanners: MutableList<Scanner>): Pair<MutableList<Scanner>, Set<Point>> {
-        fun pow2(x: Int) = x * x
-
-        val diffSets = scanners.map { s ->
-            s.beacons.flatMap { b1 ->
-                s.beacons.map { b2 -> pow2(b1.a - b2.a) + pow2(b1.b - b2.b) + pow2(b1.c - b2.c) }
-            }.toSet()
-        }
-
-        val matches = mutableSetOf<Pair<Int, Int>>()
-        diffSets.forEachIndexed { i, si ->
-            diffSets.forEachIndexed { j, sj ->
-                if (i < j) {
-                    val size = si.intersect(sj).size
-                    if (size >= 66) {
-                        matches.add(i to j)
-                    }
-                }
-            }
-        }
-
-        val rotations = listOf("012", "021", "102", "120", "201", "210")
+    fun rotate(target: Scanner, subject: Scanner): Scanner {
+        // Axis swaps (by index)
+        val swaps = listOf("012", "021", "102", "120", "201", "210")
+        // Axis flips (1 for true)
         val flips = listOf("000", "001", "010", "100", "011", "101", "110", "111")
 
         fun Scanner.rotations(): Sequence<Scanner> {
             fun Point.rotate(rotation: String, flip: String): Point {
-                fun map(rotation: Char, flip: Char): Int {
-                    val temp = get(rotation.digitToInt())
-                    return if (flip == '1') -temp else temp
-                }
+                fun map(rotation: Char, flip: Char): Int =
+                    get(rotation.digitToInt()) * if (flip == '1') -1 else 1
+
                 return Point(
-                    a = map(rotation[0], flip[0]),
-                    b = map(rotation[1], flip[1]),
-                    c = map(rotation[2], flip[2]),
+                    map(rotation[0], flip[0]),
+                    map(rotation[1], flip[1]),
+                    map(rotation[2], flip[2]),
                 )
             }
 
             return sequence {
-                rotations.forEach { rotation ->
+                swaps.forEach { swap ->
                     flips.forEach { flip ->
                         yield(
                             Scanner(
-                                position = position.rotate(rotation, flip),
-                                beacons = beacons.map { it.rotate(rotation, flip) },
+                                position = position.rotate(swap, flip),
+                                beacons = beacons.map { it.rotate(swap, flip) },
                             )
                         )
                     }
@@ -86,31 +67,49 @@ fun main() {
             }
         }
 
-        fun rotate(target: Scanner, subject: Scanner): Scanner {
-            fun Point.offset(amount: Point) {
-                a += amount.a
-                b += amount.b
-                c += amount.c
-            }
-
-            subject.rotations().forEach { rotation ->
-                val counts = rotation.beacons.flatMap { rb ->
-                    target.beacons.map { tb ->
-                        Point((tb.a - rb.a), (tb.b - rb.b), (tb.c - rb.c))
-                    }
-                }.groupingBy { it }.eachCount()
-
-                val offset = counts.entries.find { it.value >= 12 }
-                if (offset != null) {
-                    val offsetAmount = offset.key
-                    rotation.beacons.forEach { it.offset(offsetAmount) }
-                    rotation.position.offset(offsetAmount)
-                    return rotation
+        subject.rotations().forEach { rotation ->
+            val counts = rotation.beacons.flatMap { rb ->
+                target.beacons.map { tb ->
+                    Point(tb[0] - rb[0], tb[1] - rb[1], tb[2] - rb[2])
                 }
+            }.groupingBy { it }.eachCount()
+
+            // Find rotation where at least 12 beacons share the same
+            // offsets along all axes
+            val offset = counts.entries.find { it.value >= 12 }
+            if (offset != null) {
+                val offsetAmount = offset.key
+                rotation.beacons.forEach { it.offset(offsetAmount) }
+                rotation.position.offset(offsetAmount)
+                return rotation
             }
-            error("no matching rotations")
+        }
+        error("no matching rotations")
+    }
+
+    fun computeSolution(scanners: MutableList<Scanner>): Pair<MutableList<Scanner>, Set<Point>> {
+        fun pow2(x: Int) = x * x
+
+        // Compute all distances between pairs of beacons detected by each scanner
+        val diffSets = scanners.map { s ->
+            s.beacons.flatMap { b1 ->
+                s.beacons.map { b2 -> pow2(b1[0] - b2[0]) + pow2(b1[1] - b2[1]) + pow2(b1[2] - b2[2]) }
+            }.toSet()
         }
 
+        // Find distance sets that share at least 66 (12 choose 2) matched values,
+        // indicating 12 shared beacons between the scanners
+        val matches = mutableSetOf<Pair<Int, Int>>()
+        diffSets.forEachIndexed { i, si ->
+            diffSets.forEachIndexed { j, sj ->
+                if (i < j && si.intersect(sj).size >= 66) {
+                    matches.add(i to j)
+                }
+            }
+        }
+
+        // Align all scanners to the coordinate system of the first one
+        // using the discovered matches
         val solvedScanners = BooleanArray(size = scanners.size)
         solvedScanners[0] = true
 
@@ -128,7 +127,7 @@ fun main() {
             }
         }
 
-        return Pair(scanners, scanners.flatMap { it.beacons }.toSet())
+        return Pair(scanners, scanners.flatMap(Scanner::beacons).toSet())
     }
 
     fun part1(input: List<String>): Int {
@@ -137,12 +136,11 @@ fun main() {
         return beacons.size
     }
 
-
     fun part2(input: List<String>): Int {
         val sc = parseScanners(input).toMutableList()
         val (scanners, _) = computeSolution(sc)
 
-        fun manhattan(p1: Point, p2: Point) = abs(p1.a - p2.a) + abs(p1.b - p2.b) + abs(p1.c - p2.c)
+        fun manhattan(p1: Point, p2: Point) = abs(p1[0] - p2[0]) + abs(p1[1] - p2[1]) + abs(p1[2] - p2[2])
 
         return scanners.maxOf { s1 ->
             scanners.maxOf { s2 -> manhattan(s1.position, s2.position) }
