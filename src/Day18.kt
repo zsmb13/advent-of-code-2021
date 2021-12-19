@@ -1,21 +1,16 @@
+import kotlin.properties.Delegates
+
 sealed class SFNumber {
     var parent: SFPair? = null
 }
 
-class SFPair(
-    left: SFNumber,
-    right: SFNumber,
-) : SFNumber() {
-    var left: SFNumber = left
-        set(value) {
-            field = value
-            value.parent = this
-        }
-    var right: SFNumber = right
-        set(value) {
-            field = value
-            value.parent = this
-        }
+class SFPair(left: SFNumber, right: SFNumber) : SFNumber() {
+    var left: SFNumber by Delegates.observable(left) { _, _, newValue ->
+        newValue.parent = this
+    }
+    var right: SFNumber by Delegates.observable(right) { _, _, newValue ->
+        newValue.parent = this
+    }
 
     init {
         left.parent = this
@@ -46,19 +41,19 @@ fun parsePair(str: String): SFPair {
     error("Parsing failed")
 }
 
-fun SFNumber.copy(): SFNumber {
-    return when (this) {
-        is SFValue -> SFValue(this.value)
-        is SFPair -> SFPair(left.copy(), right.copy())
-    }
-}
-
 fun parseValue(str: String): SFValue = SFValue(str.toInt())
 
 fun parse(string: String): SFNumber {
     return when (string.first()) {
         '[' -> parsePair(string.drop(1).dropLast(1))
         else -> parseValue(string)
+    }
+}
+
+fun SFNumber.copy(): SFNumber {
+    return when (this) {
+        is SFValue -> SFValue(this.value)
+        is SFPair -> SFPair(left.copy(), right.copy())
     }
 }
 
@@ -75,11 +70,13 @@ fun string(sfNumber: SFNumber?): String {
 }
 
 fun reduce(sfNumber: SFNumber): SFNumber {
+    fun SFPair.isLeaf() = this.left is SFValue && this.right is SFValue
+
     fun findPairToExplode(sfNumber: SFNumber, depth: Int): SFPair? {
         return when (sfNumber) {
             is SFValue -> null
             is SFPair -> {
-                if (depth >= 4 && sfNumber.left is SFValue && sfNumber.right is SFValue) sfNumber
+                if (depth >= 4 && sfNumber.isLeaf()) sfNumber
                 else {
                     findPairToExplode(sfNumber.left, depth + 1)
                         ?: findPairToExplode(sfNumber.right, depth + 1)
@@ -94,11 +91,11 @@ fun reduce(sfNumber: SFNumber): SFNumber {
         return if (parent.left == sfNumber) {
             findNodeLeftOf(parent)
         } else {
-            var left = parent.left
-            while (left is SFPair) {
-                left = left.right
+            var leftNode = parent.left
+            while (leftNode is SFPair) {
+                leftNode = leftNode.right
             }
-            left as SFValue
+            leftNode as SFValue
         }
     }
 
@@ -108,11 +105,11 @@ fun reduce(sfNumber: SFNumber): SFNumber {
         return if (parent.right == sfNumber) {
             findNodeRightOf(parent)
         } else {
-            var right = parent.right
-            while (right is SFPair) {
-                right = right.left
+            var rightNode = parent.right
+            while (rightNode is SFPair) {
+                rightNode = rightNode.left
             }
-            right as SFValue
+            rightNode as SFValue
         }
     }
 
@@ -134,17 +131,16 @@ fun reduce(sfNumber: SFNumber): SFNumber {
         }
     }
 
+    fun SFValue.increment(sfNumber: SFNumber) {
+        val value = (sfNumber as? SFValue)?.value ?: error("Can't increment by $sfNumber")
+        this.value += value
+    }
+
     while (true) {
         val toExplode = findPairToExplode(sfNumber, depth = 0)
         if (toExplode != null) {
-            val left = findNodeLeftOf(toExplode)
-            if (left != null) {
-                left.value += (toExplode.left as SFValue).value
-            }
-            val right = findNodeRightOf(toExplode)
-            if (right != null) {
-                right.value += (toExplode.right as SFValue).value
-            }
+            findNodeLeftOf(toExplode)?.increment(toExplode.left)
+            findNodeRightOf(toExplode)?.increment(toExplode.right)
             toExplode.replace(SFValue(0))
             continue
         }
@@ -172,14 +168,12 @@ fun magnitude(sfNumber: SFNumber): Int {
 
 fun main() {
     fun part1(input: List<String>): Int {
-        val res = input
-            .map { parse(it) }
-            .reduce { a, n -> add(a, n) }
-        return magnitude(res)
+        val sum = input.map(::parse).reduce(::add)
+        return magnitude(sum)
     }
 
     fun part2(input: List<String>): Int {
-        val numbers: List<SFNumber> = input.map(::parse)
+        val numbers = input.map(::parse)
         return numbers.maxOf { a ->
             numbers.maxOf { b ->
                 magnitude(add(a, b))
