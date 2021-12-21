@@ -44,6 +44,8 @@ fun main() {
 
         val cache = mutableMapOf<List<Int>, Pair<Long, Long>>()
 
+        fun Pair<Long, Long>.flip() = Pair(second, first)
+
         fun compute(
             p1: Int,
             p2: Int,
@@ -51,59 +53,43 @@ fun main() {
             s2: Int,
             rollIndex: Int,
         ): Pair<Long, Long> {
+            if (s2 >= 21) return Pair(0, 1)
+
             val key = listOf(p1, p2, s1, s2, rollIndex)
             val match = cache[key]
             if (match != null) {
                 return match
             }
 
-            if (s1 >= 21) return Pair(1, 0)
-            if (s2 >= 21) return Pair(0, 1)
-
             return when (rollIndex) {
-                in 0..2 -> {
-                    (1..3).map { value ->
-                        val newP1 = (p1 + value) % 10
-                        compute(
-                            p1 = newP1,
-                            p2 = p2,
-                            s1 = if (rollIndex == 2) {
-                                s1 + newP1 + 1
-                            } else {
-                                s1
-                            },
-                            s2 = s2,
-                            rollIndex = (rollIndex + 1) % 6
-                        )
-                    }.let {
-                        Pair(it.sumOf { it.first }, it.sumOf { it.second })
-                    }
+                0, 1 -> (1..3).map { value ->
+                    compute(
+                        p1 = (p1 + value) % 10,
+                        p2 = p2,
+                        s1 = s1,
+                        s2 = s2,
+                        rollIndex = (rollIndex + 1) % 3
+                    )
                 }
-                in 3..5 -> {
-                    (1..3).map { value ->
-                        val newP2 = (p2 + value) % 10
-                        compute(
-                            p1 = p1,
-                            p2 = newP2,
-                            s1 = s1,
-                            s2 = if (rollIndex == 5) {
-                                s2 + newP2 + 1
-                            } else {
-                                s2
-                            },
-                            rollIndex = (rollIndex + 1) % 6
-                        )
-                    }.let {
-                        Pair(it.sumOf { it.first }, it.sumOf { it.second })
-                    }
+                2 -> (1..3).map { value ->
+                    val newPos = (p1 + value) % 10
+                    compute(
+                        p1 = p2,
+                        p2 = newPos,
+                        s1 = s2,
+                        s2 = s1 + newPos + 1,
+                        rollIndex = (rollIndex + 1) % 3
+                    ).flip()
                 }
                 else -> error("invalid")
+            }.reduce { x, y ->
+                Pair(x.first + y.first, x.second + y.second)
             }.also { result ->
                 cache[key] = result
             }
         }
 
-        val (s1, s2) = compute(p1, p2, 0, 0, 0)
+        val (s1, s2) = compute(p1 = p1, p2 = p2, s1 = 0, s2 = 0, rollIndex = 0)
         return maxOf(s1, s2)
     }
 
